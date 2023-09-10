@@ -1,0 +1,414 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: play
+  name: workadventure-play
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: workadventure
+      role: play
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: workadventure
+        role: play
+    spec:
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: env-play
+          image: thecodingmachine/workadventure-play:master
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: 1024Mi
+              cpu:  "1"
+            requests:
+              memory: 256Mi
+              cpu: "0.1"
+          env:
+            - name: EJABBERD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ejabberd-password
+                  key: name
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret-key
+                  key: secret
+            - name: EJABBERD_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ejabberd-jwt
+                  key: eja-jwt-sec
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: http
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: workadventure-play
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+            - containerPort: 50051
+              name: grpc
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: http
+              scheme: HTTP
+      restartPolicy: Always
+      serviceAccountName: sa-workadventure
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: back
+  name: workadventure-back
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: workadventure
+      role: back
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: workadventure
+        role: back
+    spec:
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: env-back
+          image: thecodingmachine/workadventure-back:master
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: 1024Mi
+              cpu:  "1"
+            requests:
+              memory: 256Mi
+              cpu: "0.1"
+          env:
+            - name: EJABBERD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ejabberd-password
+                  key: name
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret-key
+                  key: secret
+          name: workadventure-back
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+            - containerPort: 50051
+              name: grpc
+              protocol: TCP
+      restartPolicy: Always
+      serviceAccountName: sa-workadventure
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: chat
+  name: workadventure-chat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: workadventure
+      role: chat
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: workadventure
+        role: chat
+    spec:
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: env-chat
+          image: thecodingmachine/workadventure-chat:master
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: 1024Mi
+              cpu:  "1"
+            requests:
+              memory: 512Mi
+              cpu: "0.1"
+          env:
+            - name: EJABBERD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ejabberd-password
+                  key: name
+            - name: EJABBERD_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ejabberd-jwt
+                  key: eja-jwt-sec
+          name: workadventure-chat
+          ports:
+            - containerPort: 80
+              name: http
+              protocol: TCP
+      restartPolicy: Always
+      serviceAccountName: sa-workadventure
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workadventure-ejabberd
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: ejabberd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: workadventure
+      role: ejabberd
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: workadventure
+        role: ejabberd
+    spec:
+      serviceAccountName: sa-workadventure
+      volumes:
+        - name: ejabberd-template-vol
+          configMap:
+            defaultMode: 420
+            name: ejabberd-template-cm
+        - name: ejabberd-password
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "app-secrets"
+      containers:
+        - name: workadven-ejabberd
+          image: "thecodingmachine/workadventure-ejabberd:master"
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: 1024Mi
+              cpu:  "1"
+            requests:
+              memory: 512Mi
+              cpu: "0.1"
+          env:
+            - name: EJABBERD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ejabberd-password
+                  key: name
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ejabberd-jwt
+                  key: eja-jwt-sec
+          envFrom:
+            - configMapRef:
+                name: env-ejabberd
+          ports:
+            - name: http
+              containerPort: 5443
+              protocol: TCP
+          volumeMounts:
+            - name: ejabberd-template-vol
+              mountPath: /tmp/ejabberd.template.yml
+              subPath: ejabberd.template.yml
+            - mountPath: /tmp/secrets
+              name: ejabberd-password
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - sh
+                  - -c
+                  - |
+                    cp /tmp/ejabberd.template.yml /opt/ejabberd/conf/ejabberd.template.yml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: icon
+  name: workadventure-icon
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: workadventure
+      role: icon
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: workadventure
+        role: icon
+    spec:
+      serviceAccountName: sa-workadventure
+      containers:
+        - image: matthiasluedtke/iconserver:v3.13.0
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: 1024Mi
+              cpu:  "1"
+            requests:
+              memory: 512Mi
+              cpu: "0.1"
+          name: workadventure-icon
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: uploader
+  name: workadventure-uploader
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: workadventure
+      role: uploader
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: workadventure
+        role: uploader
+    spec:
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: env-uploader
+          image: thecodingmachine/workadventure-uploader:master
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: 1024Mi
+              cpu:  "1"
+            requests:
+              memory: 512Mi
+              cpu: "0.1"
+          env:
+            - name: EJABBERD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ejabberd-password
+                  key: name
+          name: workadventure-uploader
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+      restartPolicy: Always
+      serviceAccountName: sa-workadventure
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: mapstorage
+  name: workadventure-mapstorage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: workadventure
+      role: mapstorage
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: workadventure
+        role: mapstorage
+    spec:
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: env-mapstorage
+          image: thecodingmachine/workadventure-map-storage:master
+          env:
+            - name: EJABBERD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ejabberd-password
+                  key: name
+            - name: AUTHENTICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-password
+                  key: mapstorage-pass
+          imagePullPolicy: IfNotPresent
+          name: workadventure-mapstorage
+          resources:
+            limits:
+              memory: 1024Mi
+              cpu:  "1"
+            requests:
+              memory: 512Mi
+              cpu: "0.1"
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+            - containerPort: 50053
+              name: grpc
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /maps
+              name: mapstorage
+      initContainers:
+        - args:
+            - |
+              chown -R 1000:1000 /maps
+          command:
+            - /bin/sh
+            - -c
+          image: busybox
+          imagePullPolicy: Always
+          name: mapstorage-init
+          volumeMounts:
+            - mountPath: /maps
+              name: mapstorage
+      restartPolicy: Always
+      serviceAccountName: sa-workadventure
+      volumes:
+        - emptyDir: {}
+          name: mapstorage
+
+
+

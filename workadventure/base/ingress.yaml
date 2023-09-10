@@ -1,0 +1,84 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: workadventure-ingress-path
+  labels:
+    name: workadventure-ingress-path
+  namespace: workadventure-prod
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+spec:
+  tls:
+    - secretName: workadventure-com-cert
+      hosts:
+        - workadventure.yhoro.de
+  ingressClassName: nginx
+  rules:
+    - host: workadventure.yhoro.de
+      http:
+        paths:
+          - path: "/(|$)(.*)"
+            pathType: Prefix
+            backend:
+              service:
+                name: svc-workadventure-play
+                port:
+                  number: 3000
+          - path: "/(|$)(.*)"
+            pathType: Prefix
+            backend: 
+              service:
+                name: svc-workadventure-play
+                port:
+                  number: 50051
+          - path: "/chat(/|$)(.*)"
+            pathType: Prefix
+            backend:
+              service:
+                name: svc-workadventure-chat
+                port:
+                  number: 80
+          - path: "/icon(/|$)(.*)"
+            pathType: Prefix
+            backend:
+              service:
+                name: svc-workadventure-icon
+                port:
+                  number: 8080
+
+          - path: "/map-storage(/|$)(.*)"
+            pathType: Prefix
+            backend:
+              service:
+                name: svc-workadventure-mapstorage
+                port:
+                  number: 3000
+          - path: "/api(/|$)(.*)"
+            pathType: Prefix
+            backend:
+              service:
+                name: svc-workadventure-back
+                port:
+                  number: 8080
+          - path:  /xmpp(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: svc-workadventure-ejabberd
+                port:
+                  number: 5443
+          - path: /uploader(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service: 
+                name: svc-workadventure-uploader
+                port:
+                  number: 8080
+
+

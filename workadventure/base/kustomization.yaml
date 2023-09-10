@@ -1,0 +1,39 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: custom
+
+configMapGenerator:
+  - name: env-play
+    envs:
+      - conf/play.properties
+  - name: env-back
+    envs:
+      - conf/back.properties
+  - name: env-chat
+    envs:
+      - conf/chat.properties
+  - name: env-ejabberd
+    envs:
+      - conf/ejabberd.properties
+  - name: env-uploader
+    envs:
+      - conf/uploader.properties
+  - name: env-mapstorage
+    envs:
+      - conf/mapstorage.properties
+  - name: ejabberd-template-cm
+    files:
+      -  ejabberd.template.yml=conf/ejabberd-template.conf
+
+
+
+
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - serviceaccount.yaml
+  - secret_provider_class.yaml
+  - ingress.yaml
+#  - storageclass.yaml
+

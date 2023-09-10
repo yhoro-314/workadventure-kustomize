@@ -1,0 +1,181 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: play
+  name: svc-workadventure-play
+spec:
+  ports:
+    - name: http
+      port: 3000
+      protocol: TCP
+      targetPort: http
+    - name: grpc
+      port: 50051
+      protocol: TCP
+      targetPort: grpc
+  selector:
+    app.kubernetes.io/name: workadventure
+    role: play
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: back
+  name: svc-workadventure-back
+spec:
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: http
+    - name: grpc
+      port: 50051
+      protocol: TCP
+      targetPort: grpc
+  selector:
+    app.kubernetes.io/name: workadventure
+    role: back
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: chat
+  name: svc-workadventure-chat
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: workadventure
+    role: chat
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: mapstorage
+  name: svc-workadventure-mapstorage
+spec:
+  ports:
+    - name: http
+      port: 3000
+      protocol: TCP
+      targetPort: http
+    - name: grpc
+      port: 50053
+      protocol: TCP
+      targetPort: grpc
+  selector:
+    app.kubernetes.io/name: workadventure
+    role: mapstorage
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: ejabberd
+  name: svc-workadventure-ejabberd
+spec:
+  ports:
+    - name: http
+      port: 5443
+      protocol: TCP
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: workadventure
+    role: ejabberd
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: icon
+  name: svc-workadventure-icon
+spec:
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: workadventure
+    role: icon
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: workadventure
+    role: uploader
+  name: svc-workadventure-uploader
+spec:
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: workadventure
+    role: uploader
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: redis
+  name: workadven-redis-headless
+spec:
+  ports:
+    - name: tcp-redis
+      port: 6379
+      protocol: TCP
+      targetPort: redis
+  selector:
+    app.kubernetes.io/name: redis
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: master
+    app.kubernetes.io/name: redis
+  name: workadven-redis-master
+spec:
+  ports:
+    - name: tcp-redis
+      port: 6379
+      protocol: TCP
+      targetPort: redis
+  selector:
+    app.kubernetes.io/component: master
+    app.kubernetes.io/name: redis
+  type: ClusterIP
+
